@@ -77,7 +77,14 @@ def load_fasttext_model(path):
     except ImportError:
         raise Exception("Unable to import fastText. Please install fastText for Python: "
                         "https://github.com/facebookresearch/fastText")
-    return fastText.load_model(path)
+    try:
+        return fastText.load_model(path), True
+    except ValueError:
+        try:
+            import gensim
+        except ImportError:
+            raise Exception()
+        return gensim.models.fasttext.FastText.load(path), False
 
 
 def bow(sentences, word_vec, normalize=False):
@@ -363,13 +370,22 @@ def load_bin_embeddings(params, source, full_vocab):
     """
     # reload fastText binary file
     lang = params.src_lang if source else params.tgt_lang
-    model = load_fasttext_model(params.src_emb if source else params.tgt_emb)
-    words = model.get_labels()
-    assert model.get_dimension() == params.emb_dim
-    logger.info("Loaded binary model. Generating embeddings ...")
-    embeddings = torch.from_numpy(np.concatenate([model.get_word_vector(w)[None] for w in words], 0))
-    logger.info("Generated embeddings for %i words." % len(words))
-    assert embeddings.size() == (len(words), params.emb_dim)
+    model, fasttext = load_fasttext_model(params.src_emb if source else params.tgt_emb)
+    if fasttext:
+        words = model.get_labels()
+        assert model.get_dimension() == params.emb_dim
+        logger.info("Loaded fasttext binary model. Generating embeddings ...")
+        embeddings = torch.from_numpy(np.concatenate([model.get_word_vector(w)[None] for w in words], 0))
+        logger.info("Generated embeddings for %i words." % len(words))
+        assert embeddings.size() == (len(words), params.emb_dim)
+    else:
+        words = model.wv.index2word
+        assert model.vector_size == params.emb_dim
+        logger.info("Loaded gensim binary model. Generating embeddings ...")
+        embeddings = torch.from_numpy(np.concatenate([model[w][None] for w in
+                                                      words], 0))
+        logger.info("Generated embeddings for %i words." % len(words))
+        assert embeddings.size() == (len(words), params.emb_dim)
 
     # select a subset of word embeddings (to deal with casing)
     if not full_vocab:
