@@ -32,6 +32,9 @@ class Dictionary(object):
         """
         return self.id2word[i]
 
+    def __iter__(self):
+        return self.word2id.keys().__iter__()
+
     def __contains__(self, w):
         """
         Returns whether a word is in the dictionary.

@@ -83,7 +83,8 @@ def load_fasttext_model(path):
         try:
             import gensim
         except ImportError:
-            raise Exception()
+            raise Exception("Unable to import fastText. Please install gensim: "
+                            "pip install gensim.")
         return gensim.models.fasttext.FastText.load(path), False
 
 
@@ -382,8 +383,7 @@ def load_bin_embeddings(params, source, full_vocab):
         words = model.wv.index2word
         assert model.vector_size == params.emb_dim
         logger.info("Loaded gensim binary model. Generating embeddings ...")
-        embeddings = torch.from_numpy(np.concatenate([model[w][None] for w in
-                                                      words], 0))
+        embeddings = torch.from_numpy(np.concatenate([model[w][None] for w in words], 0))
         logger.info("Generated embeddings for %i words." % len(words))
         assert embeddings.size() == (len(words), params.emb_dim)
 
@@ -444,7 +444,7 @@ def export_embeddings(src_emb, tgt_emb, params):
     """
     Export embeddings to a text or a PyTorch file.
     """
-    assert params.export in ["txt", "pth"]
+    assert params.export in ["txt", "pth", "bin"]
 
     # text file
     if params.export == "txt":
@@ -471,3 +471,34 @@ def export_embeddings(src_emb, tgt_emb, params):
         torch.save({'dico': params.src_dico, 'vectors': src_emb}, src_path)
         logger.info('Writing target embeddings to %s ...' % tgt_path)
         torch.save({'dico': params.tgt_dico, 'vectors': tgt_emb}, tgt_path)
+
+    if params.export == "bin":
+        try:
+            import gensim
+        except ImportError:
+            raise Exception("Unable to import fastText. Please install gensim: "
+                            "pip install gensim.")
+
+        assert len(params.src_dico) == len(src_emb)
+        assert len(params.tgt_dico) == len(tgt_emb)
+
+        src_path = os.path.join(params.exp_path, 'vectors-%s.bin' % params.src_lang)
+        tgt_path = os.path.join(params.exp_path, 'vectors-%s.bin' % params.tgt_lang)
+        logger.info('Writing source embeddings to %s ...' % src_path)
+        model = gensim.models.keyedvectors.WordEmbeddingsKeyedVectors(params.emb_dim)
+        model.add(params.src_dico, src_emb.numpy())
+        # for i in range(len(params.src_dico)):
+            # if i % 20000 == 0:
+                # print("Added %i." % i)
+            # model.add(params.src_dico[i], src_emb[i])
+        model.save(src_path)
+        logger.info('Model saved to %s.' % src_path)
+        logger.info('Writing target embeddings to %s ...' % tgt_path)
+        model = gensim.models.keyedvectors.WordEmbeddingsKeyedVectors(params.emb_dim)
+        model.add(params.tgt_dico, tgt_emb.numpy())
+        # for i in range(len(params.tgt_dico)):
+            # if i % 20000 == 0:
+                # print("Added %i." % i)
+            # model.add(params.tgt_dico[i], tgt_emb[i])
+        model.save(tgt_path)
+        logger.info('Model saved to %s.' % tgt_path)

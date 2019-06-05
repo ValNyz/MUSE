@@ -29,7 +29,7 @@ parser.add_argument("--exp_path", type=str, default="", help="Where to store exp
 parser.add_argument("--exp_name", type=str, default="debug", help="Experiment name")
 parser.add_argument("--exp_id", type=str, default="", help="Experiment ID")
 parser.add_argument("--cuda", type=bool_flag, default=True, help="Run on GPU")
-parser.add_argument("--export", type=str, default="txt", help="Export embeddings after training (txt / pth)")
+parser.add_argument("--export", type=str, default="txt", help="Export embeddings after training (txt / pth / bin)")
 
 # data
 parser.add_argument("--src_lang", type=str, default='en', help="Source language")
@@ -65,7 +65,7 @@ assert params.dico_max_size == 0 or params.dico_max_size > params.dico_min_size
 assert os.path.isfile(params.src_emb)
 assert os.path.isfile(params.tgt_emb)
 assert params.dico_eval == 'default' or os.path.isfile(params.dico_eval)
-assert params.export in ["", "txt", "pth"]
+assert params.export in ["", "txt", "pth", "bin"]
 
 # build logger / model / trainer / evaluator
 logger = initialize_exp(params)
